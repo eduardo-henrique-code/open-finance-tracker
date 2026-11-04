@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Finance Tracker - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.pluggy.ai/pluggy-connect.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased" onload="updateDataAccounts(); update_accounts_chart();">
+
+    <header class="border-b border-slate-800 bg-slate-950/50 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white">
+                    OF
+                </div>
+                <span class="font-semibold text-lg tracking-wide text-white">Open Finance Tracker</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 backdrop-blur">
+                <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Patrimônio Total</span>
+                <div class="mt-2 text-3xl font-bold text-white" id="total-balance">R$ 0,00</div>
+                <div class="mt-2 text-xs text-emerald-400 flex items-center gap-1">
+                    <span>Sincronizado via Open Finance</span>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 backdrop-blur">
+                <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Saldo em Conta</span>
+                <div class="mt-2 text-3xl font-bold text-white" id="bank-balance">Carregando...</div>
+                <div class="mt-2 text-xs text-slate-400">
+                    Soma de contas correntes
+                </div>
+            </div>
+
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 backdrop-blur">
+                <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Gastos do Mês Passado</span>
+                <div class="mt-2 text-3xl font-bold text-rose-400" id="credit-expenses">Carregando...</div>
+                <div class="mt-2 text-xs text-slate-400">
+                    Total das faturas do último mês fechado
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-white">Faturas de Cartão</h2>
+                    <span class="text-xs text-slate-400">Últimos 7 meses completos</span>
+                </div>
+                <div class="w-full h-64 relative">
+                    <canvas id="financialChart"></canvas>
+                    <div id="invoice-chart-status" class="absolute inset-0 flex items-center justify-center bg-slate-800/80 text-sm text-slate-400">
+                        Carregando faturas...
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
+                <h2 class="text-lg font-semibold text-white mb-4">Contas Conectadas</h2>
+                <ul id="connected-accounts-list" class="space-y-3">
+                    <li class="p-3 bg-slate-900/50 rounded-xl border border-slate-700/30 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-2 h-2 rounded-full bg-slate-500"></div>
+                            <span class="text-sm font-medium text-slate-300">Carregando contas...</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+                <h2 class="text-lg font-semibold text-white">Transações Recentes</h2>
+                <div class="flex flex-wrap items-center gap-3">
+                    <label for="bank-selector" class="text-sm text-slate-400">Banco</label>
+                    <select id="bank-selector" disabled
+                        class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 disabled:cursor-not-allowed disabled:opacity-60">
+                        <option value="">Carregando bancos...</option>
+                    </select>
+                    <button id="search-transactions-button" type="button"
+                        class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500">
+                        Buscar
+                    </button>
+                    <span class="text-xs text-slate-400" id="transaction-count">0 movimentações</span>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="text-xs text-slate-400 uppercase bg-slate-900/50 border-b border-slate-700/50">
+                        <tr>
+                            <th class="px-4 py-3">Data</th>
+                            <th class="px-4 py-3">Descrição</th>
+                            <th class="px-4 py-3">Categoria</th>
+                            <th class="px-4 py-3 text-right">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactions-table-body" class="divide-y divide-slate-700/30">
+                        <tr>
+                            <td colspan="4" class="px-4 py-8 text-center text-slate-500">
+                                Conecte um banco para visualizar o histórico financeiro.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        let financialChart;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initChart();
+        });
+
+        function initChart() {
+            const ctx = document.getElementById('financialChart').getContext('2d');
+            financialChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Total das faturas (R$)',
+                        data: [],
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        }
+
+        async function update_accounts_chart(){
+            const expensesEl = document.getElementById('credit-expenses');
+            const chartStatusEl = document.getElementById('invoice-chart-status');
+
+            try {
+                const response = await fetch('/routers/pluggy/get_past_invoices');
+                if (!response.ok) {
+                    throw new Error(`Falha ao carregar faturas (HTTP ${response.status}).`);
+                }
+
+                const data = await response.json();
+                if (!Array.isArray(data.PastInvoices)) {
+                    throw new Error('A resposta de faturas possui formato inválido.');
+                }
+
+                const now = new Date();
+                const months = Array.from({ length: 7 }, (_, index) => {
+                    const date = new Date(now.getFullYear(), now.getMonth() - 7 + index, 1);
+                    return {
+                        key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+                        label: new Intl.DateTimeFormat('pt-BR', {
+                            month: 'short',
+                            year: 'numeric'
+                        }).format(date),
+                        total: 0
+                    };
+                });
+                const totalsByMonth = new Map(months.map(month => [month.key, month]));
+
+                data.PastInvoices.forEach(invoice => {
+                    if (typeof invoice.dueDate !== 'string') {
+                        return;
+                    }
+
+                    const dateMatch = /^(\d{4})-(\d{2})/.exec(invoice.dueDate);
+                    if (!dateMatch || Number(dateMatch[2]) < 1 || Number(dateMatch[2]) > 12) {
+                        return;
+                    }
+
+                    const amount = Number(invoice.totalAmount);
+                    if (!Number.isFinite(amount)) {
+                        return;
+                    }
+
+                    const key = `${dateMatch[1]}-${dateMatch[2]}`;
+                    const month = totalsByMonth.get(key);
+                    if (month) {
+                        month.total += amount;
+                    }
+                });
+
+                financialChart.data.labels = months.map(month => month.label);
+                financialChart.data.datasets[0].data = months.map(month => month.total);
+                financialChart.update();
+
+                const lastMonthTotal = months[months.length - 1].total;
+                expensesEl.textContent = `R$ ${lastMonthTotal.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })}`;
+                chartStatusEl.classList.add('hidden');
+            } catch (error) {
+                console.error('Erro ao buscar faturas:', error);
+                expensesEl.textContent = 'Não foi possível carregar';
+                chartStatusEl.textContent = 'Não foi possível carregar as faturas.';
+            }
+        }
+
+        async function updateDataAccounts() {
+            try {
+                const response = await fetch('/routers/pluggy/get_name_accounts');
+                if (!response.ok) {
+                    throw new Error(`Falha ao carregar bancos (HTTP ${response.status}).`);
+                }
+
+                const data = await response.json();
+
+                const accountsListEl = document.getElementById('connected-accounts-list');
+                const bankSelectorEl = document.getElementById('bank-selector');
+                const bankBalanceEl = document.getElementById('bank-balance');
+                const accounts = Array.isArray(data.Accounts)
+                    ? data.Accounts.filter(account => typeof account.name === 'string' && account.name.trim())
+                    : [];
+                let totalBalance = 0;
+
+                bankSelectorEl.innerHTML = '';
+                const allBanksOption = document.createElement('option');
+                allBanksOption.value = '';
+                allBanksOption.textContent = 'Escolha um banco';
+                bankSelectorEl.appendChild(allBanksOption);
+
+                if (accounts.length > 0) {
+
+                    const responsebalance = await fetch('/routers/pluggy/get_total_balance');
+                    if (!responsebalance.ok) {
+                        throw new Error(`Falha ao carregar saldo total (HTTP ${responsebalance.status}).`);
+                    }
+
+                    const balanceData = await responsebalance.json();
+                    if (!Array.isArray(balanceData)) {
+                        throw new Error('A resposta de saldos possui formato inválido.');
+                    }
+                    if (balanceData.length !== accounts.length) {
+                        throw new Error('A quantidade de saldos não corresponde à quantidade de bancos.');
+                    }
+
+                    totalBalance = balanceData.reduce((total, balance) => {
+                        const numericBalance = Number(balance);
+                        if (!Number.isFinite(numericBalance)) {
+                            throw new Error('A resposta contém um saldo inválido.');
+                        }
+                        return total + numericBalance;
+                    }, 0);
+
+                    accountsListEl.innerHTML = '';
+                    accounts.forEach((account, index) => {
+                        const bankOption = document.createElement('option');
+                        bankOption.value = account.name;
+                        bankOption.textContent = account.name;
+                        bankSelectorEl.appendChild(bankOption);
+
+                        const li = document.createElement('li');
+                        li.className = "p-3 bg-slate-900/50 rounded-xl border border-slate-700/30 flex items-center justify-between";
+
+                        const accountName = document.createElement('span');
+                        accountName.className = "text-sm font-medium text-slate-300";
+                        accountName.textContent = account.name;
+
+                        const accountDetails = document.createElement('div');
+                        accountDetails.className = "flex items-center gap-3";
+
+                        const statusIndicator = document.createElement('div');
+
+                        if (Number(balanceData[index]) <= 0) {
+                            statusIndicator.className = "w-2 h-2 rounded-full bg-rose-500";
+                        } else {
+                            statusIndicator.className = "w-2 h-2 rounded-full bg-emerald-500";
+                        }
+                        
+
+                        accountDetails.append(statusIndicator, accountName);
+                        li.appendChild(accountDetails);
+                        accountsListEl.appendChild(li);
+                    });
+                    bankSelectorEl.disabled = false;
+                } else {
+                    bankSelectorEl.disabled = true;
+                    accountsListEl.innerHTML = `
+                        <li class="p-3 bg-slate-900/50 rounded-xl border border-slate-700/30 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-2 h-2 rounded-full bg-slate-500"></div>
+                                <span class="text-sm font-medium text-slate-300">Nenhuma conta vinculada</span>
+                            </div>
+                        </li>
+                    `;
+                }
+
+                bankBalanceEl.textContent = `R$ ${totalBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+            } catch (error) {
+                console.error("Erro ao buscar contas:", error);
+                const bankSelectorEl = document.getElementById('bank-selector');
+                const accountsListEl = document.getElementById('connected-accounts-list');
+                const bankBalanceEl = document.getElementById('bank-balance');
+                bankSelectorEl.innerHTML = '<option value="">Não foi possível carregar bancos</option>';
+                bankSelectorEl.disabled = true;
+                accountsListEl.innerHTML = `
+                    <li class="p-3 bg-slate-900/50 rounded-xl border border-slate-700/30 flex items-center justify-between">
+                        <span class="text-sm font-medium text-slate-300">Não foi possível carregar contas</span>
+                    </li>
+                `;
+                bankBalanceEl.textContent = 'Não foi possível carregar';
+            }
+        }
+    </script>
+</body>
+</html>

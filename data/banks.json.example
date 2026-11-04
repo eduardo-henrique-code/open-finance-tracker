@@ -1,0 +1,60 @@
+{
+    "banco1": {
+        "BANK": {
+            "id": "",
+            "type": "",
+            "subtype": "",
+            "name": "",
+            "balance": ,
+            "currencyCode": "",
+            "itemId": "",
+            "number": "",
+            "createdAt": "",
+            "updatedAt": "",
+            "marketingName": "",
+            "taxNumber": "",
+            "owner": "",
+            "bankData": {
+                "transferNumber": "",
+                "closingBalance": ,
+                "automaticallyInvestedBalance": ,
+                "overdraftContractedLimit": ,
+                "overdraftUsedLimit": ,
+                "unarrangedOverdraftAmount": ,
+                "hasReservedBalance": ,
+                "reservedBalances": []
+            },
+            "creditData": 
+        },
+        "CREDIT": {
+            "id": "",
+            "type": "",
+            "subtype": "",
+            "name": "",
+            "balance": ,
+            "currencyCode": "",
+            "itemId": "",
+            "number": "",
+            "createdAt": "",
+            "updatedAt": "",
+            "marketingName": ,
+            "taxNumber": ,
+            "owner": "",
+            "bankData": ,
+            "creditData": {
+                "level": "",
+                "brand": "",
+                "brandAdditionalInfo": "",
+                "balanceCloseDate": ,
+                "balanceDueDate": "",
+                "availableCreditLimit": ,
+                "balanceForeignCurrency": ,
+                "minimumPayment": ,
+                "creditLimit": ,
+                "isLimitFlexible": ,
+                "holderType": ,
+                "status": ""
+            }
+        }
+    } 
+}
