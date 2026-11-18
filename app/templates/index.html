@@ -6,9 +6,8 @@
     <title>Open Finance Tracker - Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.pluggy.ai/pluggy-connect.js"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased" onload="updateDataAccounts(); update_accounts_chart();">
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased">
 
     <header class="border-b border-slate-800 bg-slate-950/50 backdrop-blur sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -25,10 +24,10 @@
 
         <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 backdrop-blur">
-                <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Patrimônio Total</span>
+                <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Patrimônio Líquido (BRL)</span>
                 <div class="mt-2 text-3xl font-bold text-white" id="total-balance">R$ 0,00</div>
-                <div class="mt-2 text-xs text-emerald-400 flex items-center gap-1">
-                    <span>Sincronizado via Open Finance</span>
+                <div class="mt-2 text-xs text-slate-400" id="accounts-snapshot-timestamp">
+                    Valores conforme o JSON local
                 </div>
             </div>
 
@@ -36,15 +35,15 @@
                 <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Saldo em Conta</span>
                 <div class="mt-2 text-3xl font-bold text-white" id="bank-balance">Carregando...</div>
                 <div class="mt-2 text-xs text-slate-400">
-                    Soma de contas correntes
+                    Soma de contas bancárias em BRL
                 </div>
             </div>
 
             <div class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 backdrop-blur">
-                <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Gastos do Mês Passado</span>
+                <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Gastos no Mês Passado</span>
                 <div class="mt-2 text-3xl font-bold text-rose-400" id="credit-expenses">Carregando...</div>
                 <div class="mt-2 text-xs text-slate-400">
-                    Total das faturas do último mês fechado
+                    Compras lançadas na fatura no último mês fechado
                 </div>
             </div>
         </section>
@@ -53,7 +52,7 @@
             <div class="lg:col-span-2 bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 flex flex-col justify-between">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-semibold text-white">Faturas de Cartão</h2>
-                    <span class="text-xs text-slate-400">Últimos 7 meses completos</span>
+                    <span class="text-xs text-slate-400">Parcelas e compras por mês</span>
                 </div>
                 <div class="w-full h-64 relative">
                     <canvas id="financialChart"></canvas>
@@ -80,17 +79,48 @@
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
                 <h2 class="text-lg font-semibold text-white">Transações Recentes</h2>
                 <div class="flex flex-wrap items-center gap-3">
-                    <label for="bank-selector" class="text-sm text-slate-400">Banco</label>
+                    <label for="bank-selector" class="text-sm text-slate-400">Conta</label>
                     <select id="bank-selector" disabled
                         class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 disabled:cursor-not-allowed disabled:opacity-60">
                         <option value="">Carregando bancos...</option>
                     </select>
-                    <button id="search-transactions-button" type="button"
+                    <button id="search-transactions-button" type="button" onclick="get_transaction_history()"
                         class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500">
                         Buscar
                     </button>
-                    <span class="text-xs text-slate-400" id="transaction-count">0 movimentações</span>
+                    <span class="text-xs text-slate-400" id="transaction-count" aria-live="polite">
+                        0 movimentações
+                    </span>
                 </div>
+            </div>
+            <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <label class="sr-only" for="transaction-search">Buscar transação</label>
+                <input id="transaction-search" type="search" placeholder="Buscar descrição ou categoria"
+                    class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500">
+                <label class="sr-only" for="transaction-type-filter">Tipo de transação</label>
+                <select id="transaction-type-filter"
+                    class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200">
+                    <option value="">Todos os tipos</option>
+                    <option value="DEBIT">Despesas</option>
+                    <option value="CREDIT">Entradas e pagamentos</option>
+                </select>
+                <label class="sr-only" for="transaction-category-filter">Categoria</label>
+                <select id="transaction-category-filter" aria-label="Categoria" disabled
+                    class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 disabled:cursor-not-allowed disabled:opacity-60">
+                    <option value="">Todas as categorias</option>
+                </select>
+                <label class="sr-only" for="transaction-date-from">Data inicial</label>
+                <input id="transaction-date-from" type="date" aria-label="Data inicial"
+                    class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200">
+                <label class="sr-only" for="transaction-date-to">Data final</label>
+                <input id="transaction-date-to" type="date" aria-label="Data final"
+                    class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200">
+            </div>
+            <div class="mb-4 flex justify-end">
+                <button id="export-transactions-button" type="button" disabled
+                    class="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40">
+                    Exportar CSV das carregadas
+                </button>
             </div>
             
             <div class="overflow-x-auto">
@@ -106,21 +136,61 @@
                     <tbody id="transactions-table-body" class="divide-y divide-slate-700/30">
                         <tr>
                             <td colspan="4" class="px-4 py-8 text-center text-slate-500">
-                                Conecte um banco para visualizar o histórico financeiro.
+                            Configure uma conta para visualizar o histórico financeiro.
                             </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
+            <nav id="transaction-pagination"
+                class="mt-4 flex items-center justify-between gap-4"
+                aria-label="Paginação do histórico de transações" hidden>
+                <button id="previous-transactions-page" type="button" disabled
+                    class="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40">
+                    Anterior
+                </button>
+                <span id="transaction-page-label" class="text-sm text-slate-400" aria-live="polite"></span>
+                <button id="next-transactions-page" type="button" disabled
+                    class="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40">
+                    Próxima
+                </button>
+            </nav>
+        </section>
+
+        <section id="transaction-summary-section"
+            class="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6"
+            aria-labelledby="transaction-summary-title" hidden>
+            <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <h2 id="transaction-summary-title" class="text-lg font-semibold text-white">
+                        Resumo financeiro por categoria
+                    </h2>
+                    <p class="mt-1 text-sm text-slate-400">
+                        Valores das transações carregadas, considerando os filtros acima.
+                    </p>
+                </div>
+                <span id="transaction-summary-count" class="text-xs text-slate-500"></span>
+            </div>
+            <div id="transaction-summary-content" class="space-y-6"></div>
         </section>
 
     </main>
 
     <script>
         let financialChart;
+        const transactionsPerPage = 10;
+        let transactionHistory = [];
+        let currentTransactionPage = 1;
+        let nextTransactionCursor = null;
+        let transactionAccountId = '';
+        let isLoadingTransactionPage = false;
+        let transactionLoadError = '';
+        let connectedAccounts = [];
 
         document.addEventListener('DOMContentLoaded', () => {
             initChart();
+            updateDataAccounts();
+            update_accounts_chart();
         });
 
         function initChart() {
@@ -130,7 +200,7 @@
                 data: {
                     labels: [],
                     datasets: [{
-                        label: 'Total das faturas (R$)',
+                        label: 'Gastos no cartão (R$)',
                         data: [],
                         borderColor: '#6366f1',
                         backgroundColor: 'rgba(99, 102, 241, 0.1)',
@@ -157,14 +227,14 @@
             const chartStatusEl = document.getElementById('invoice-chart-status');
 
             try {
-                const response = await fetch('/routers/pluggy/get_past_invoices');
+                const response = await fetch('/routers/pluggy/get_monthly_credit_expenses');
                 if (!response.ok) {
                     throw new Error(`Falha ao carregar faturas (HTTP ${response.status}).`);
                 }
 
                 const data = await response.json();
-                if (!Array.isArray(data.PastInvoices)) {
-                    throw new Error('A resposta de faturas possui formato inválido.');
+                if (!Array.isArray(data.MonthlyExpenses)) {
+                    throw new Error('A resposta de gastos possui formato inválido.');
                 }
 
                 const now = new Date();
@@ -181,17 +251,17 @@
                 });
                 const totalsByMonth = new Map(months.map(month => [month.key, month]));
 
-                data.PastInvoices.forEach(invoice => {
-                    if (typeof invoice.dueDate !== 'string') {
+                data.MonthlyExpenses.forEach(expense => {
+                    if (typeof expense.month !== 'string' || expense.currencyCode !== 'BRL') {
                         return;
                     }
 
-                    const dateMatch = /^(\d{4})-(\d{2})/.exec(invoice.dueDate);
+                    const dateMatch = /^(\d{4})-(\d{2})$/.exec(expense.month);
                     if (!dateMatch || Number(dateMatch[2]) < 1 || Number(dateMatch[2]) > 12) {
                         return;
                     }
 
-                    const amount = Number(invoice.totalAmount);
+                    const amount = Number(expense.amount);
                     if (!Number.isFinite(amount)) {
                         return;
                     }
@@ -222,110 +292,549 @@
 
         async function updateDataAccounts() {
             try {
-                const response = await fetch('/routers/pluggy/get_name_accounts');
+                const response = await fetch('/routers/pluggy/get_accounts');
                 if (!response.ok) {
-                    throw new Error(`Falha ao carregar bancos (HTTP ${response.status}).`);
+                    throw new Error(`Falha ao carregar contas (HTTP ${response.status}).`);
                 }
 
                 const data = await response.json();
+                const totalBalance = Number(data.totalBalance);
+                const bankBalance = Number(data.bankBalance);
+                if (!Number.isFinite(totalBalance) || !Number.isFinite(bankBalance)) {
+                    throw new Error('A resposta contém um saldo inválido.');
+                }
+                connectedAccounts = Array.isArray(data.Accounts) ? data.Accounts : [];
+                const snapshotTimestamp = document.getElementById('accounts-snapshot-timestamp');
+                if (typeof data.dataUpdatedAt === 'string') {
+                    const savedAt = new Date(data.dataUpdatedAt);
+                    snapshotTimestamp.textContent = Number.isNaN(savedAt.getTime())
+                        ? 'Valores conforme o JSON local'
+                        : `JSON local salvo em ${new Intl.DateTimeFormat('pt-BR', {
+                            dateStyle: 'short',
+                            timeStyle: 'short'
+                        }).format(savedAt)}`;
+                } else {
+                    snapshotTimestamp.textContent = 'Saldos consultados na API';
+                }
 
                 const accountsListEl = document.getElementById('connected-accounts-list');
                 const bankSelectorEl = document.getElementById('bank-selector');
-                const bankBalanceEl = document.getElementById('bank-balance');
                 const accounts = Array.isArray(data.Accounts)
-                    ? data.Accounts.filter(account => typeof account.name === 'string' && account.name.trim())
+                    ? data.Accounts.filter(account =>
+                        typeof account.id === 'string' &&
+                        typeof account.name === 'string' &&
+                        account.name.trim()
+                    )
                     : [];
-                let totalBalance = 0;
 
                 bankSelectorEl.innerHTML = '';
-                const allBanksOption = document.createElement('option');
-                allBanksOption.value = '';
-                allBanksOption.textContent = 'Escolha um banco';
-                bankSelectorEl.appendChild(allBanksOption);
+                const allAccountsOption = document.createElement('option');
+                allAccountsOption.value = '';
+                allAccountsOption.textContent = 'Escolha uma conta';
+                bankSelectorEl.appendChild(allAccountsOption);
+
+                accountsListEl.innerHTML = '';
+                accounts.forEach(account => {
+                    const accountLabel = account.institution
+                        ? `${account.institution} - ${account.name}`
+                        : account.name;
+                    const bankOption = document.createElement('option');
+                    bankOption.value = account.id;
+                    bankOption.textContent = `${accountLabel} (${account.type})`;
+                    bankSelectorEl.appendChild(bankOption);
+
+                    const li = document.createElement('li');
+                    li.className = 'p-3 bg-slate-900/50 rounded-xl border border-slate-700/30 flex items-center justify-between';
+
+                    const accountName = document.createElement('span');
+                    accountName.className = 'text-sm font-medium text-slate-300';
+                    accountName.textContent = `${accountLabel} (${account.type})`;
+
+                    const accountBalance = document.createElement('span');
+                    accountBalance.className = 'text-sm text-slate-400';
+                    const formattedBalance = new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: account.currencyCode || 'BRL'
+                    }).format(Number(account.balance) || 0);
+                    accountBalance.textContent = account.type === 'CREDIT'
+                        ? `Fatura em aberto: ${formattedBalance}`
+                        : formattedBalance;
+
+                    li.append(accountName, accountBalance);
+                    accountsListEl.appendChild(li);
+                });
 
                 if (accounts.length > 0) {
-
-                    const responsebalance = await fetch('/routers/pluggy/get_total_balance');
-                    if (!responsebalance.ok) {
-                        throw new Error(`Falha ao carregar saldo total (HTTP ${responsebalance.status}).`);
-                    }
-
-                    const balanceData = await responsebalance.json();
-                    if (!Array.isArray(balanceData)) {
-                        throw new Error('A resposta de saldos possui formato inválido.');
-                    }
-                    if (balanceData.length !== accounts.length) {
-                        throw new Error('A quantidade de saldos não corresponde à quantidade de bancos.');
-                    }
-
-                    totalBalance = balanceData.reduce((total, balance) => {
-                        const numericBalance = Number(balance);
-                        if (!Number.isFinite(numericBalance)) {
-                            throw new Error('A resposta contém um saldo inválido.');
-                        }
-                        return total + numericBalance;
-                    }, 0);
-
-                    accountsListEl.innerHTML = '';
-                    accounts.forEach((account, index) => {
-                        const bankOption = document.createElement('option');
-                        bankOption.value = account.name;
-                        bankOption.textContent = account.name;
-                        bankSelectorEl.appendChild(bankOption);
-
-                        const li = document.createElement('li');
-                        li.className = "p-3 bg-slate-900/50 rounded-xl border border-slate-700/30 flex items-center justify-between";
-
-                        const accountName = document.createElement('span');
-                        accountName.className = "text-sm font-medium text-slate-300";
-                        accountName.textContent = account.name;
-
-                        const accountDetails = document.createElement('div');
-                        accountDetails.className = "flex items-center gap-3";
-
-                        const statusIndicator = document.createElement('div');
-
-                        if (Number(balanceData[index]) <= 0) {
-                            statusIndicator.className = "w-2 h-2 rounded-full bg-rose-500";
-                        } else {
-                            statusIndicator.className = "w-2 h-2 rounded-full bg-emerald-500";
-                        }
-                        
-
-                        accountDetails.append(statusIndicator, accountName);
-                        li.appendChild(accountDetails);
-                        accountsListEl.appendChild(li);
-                    });
                     bankSelectorEl.disabled = false;
                 } else {
                     bankSelectorEl.disabled = true;
                     accountsListEl.innerHTML = `
-                        <li class="p-3 bg-slate-900/50 rounded-xl border border-slate-700/30 flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <div class="w-2 h-2 rounded-full bg-slate-500"></div>
-                                <span class="text-sm font-medium text-slate-300">Nenhuma conta vinculada</span>
-                            </div>
+                        <li class="p-3 bg-slate-900/50 rounded-xl border border-slate-700/30 text-sm text-slate-400">
+                            Nenhuma conta disponível na API da Pluggy.
                         </li>
                     `;
                 }
 
-                bankBalanceEl.textContent = `R$ ${totalBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+                document.getElementById('total-balance').textContent =
+                    new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL'
+                    }).format(totalBalance);
+                document.getElementById('bank-balance').textContent =
+                    new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL'
+                    }).format(bankBalance);
             } catch (error) {
-                console.error("Erro ao buscar contas:", error);
+                console.error('Erro ao buscar contas:', error);
                 const bankSelectorEl = document.getElementById('bank-selector');
                 const accountsListEl = document.getElementById('connected-accounts-list');
-                const bankBalanceEl = document.getElementById('bank-balance');
-                bankSelectorEl.innerHTML = '<option value="">Não foi possível carregar bancos</option>';
+                bankSelectorEl.innerHTML = '<option value="">Não foi possível carregar contas</option>';
                 bankSelectorEl.disabled = true;
                 accountsListEl.innerHTML = `
-                    <li class="p-3 bg-slate-900/50 rounded-xl border border-slate-700/30 flex items-center justify-between">
-                        <span class="text-sm font-medium text-slate-300">Não foi possível carregar contas</span>
+                    <li class="p-3 bg-slate-900/50 rounded-xl border border-slate-700/30">
+                        <span class="text-sm text-slate-300">Não foi possível carregar contas.</span>
                     </li>
                 `;
-                bankBalanceEl.textContent = 'Não foi possível carregar';
+                document.getElementById('total-balance').textContent = 'Não foi possível carregar';
+                document.getElementById('bank-balance').textContent = 'Não foi possível carregar';
             }
         }
+
+        async function get_transaction_history() {
+            const accountId = document.getElementById('bank-selector').value;
+            const tableBody = document.getElementById('transactions-table-body');
+            const transactionCount = document.getElementById('transaction-count');
+            const searchButton = document.getElementById('search-transactions-button');
+            const pagination = document.getElementById('transaction-pagination');
+
+            if (!accountId) {
+                transactionHistory = [];
+                currentTransactionPage = 1;
+                nextTransactionCursor = null;
+                transactionAccountId = '';
+                updateTransactionCategoryFilter();
+                renderTransactionSummary([]);
+                pagination.hidden = true;
+                tableBody.innerHTML = `
+                    <tr><td colspan="4" class="px-4 py-8 text-center text-slate-500">
+                        Selecione uma conta para buscar as transações.
+                    </td></tr>
+                `;
+                transactionCount.textContent = '0 movimentações';
+                return;
+            }
+
+            searchButton.disabled = true;
+            searchButton.textContent = 'Buscando...';
+            try {
+                transactionHistory = [];
+                currentTransactionPage = 1;
+                nextTransactionCursor = null;
+                transactionAccountId = accountId;
+                updateTransactionCategoryFilter();
+                renderTransactionSummary([]);
+                transactionLoadError = '';
+                const data = await fetchTransactionPage();
+                if (!Array.isArray(data.TransactionHistory)) {
+                    throw new Error('A resposta de transações possui formato inválido.');
+                }
+                transactionHistory = data.TransactionHistory;
+                nextTransactionCursor = data.nextCursor || null;
+                updateTransactionCategoryFilter();
+                renderTransactionPage();
+            } catch (error) {
+                console.error('Erro ao buscar transações:', error);
+                transactionHistory = [];
+                currentTransactionPage = 1;
+                nextTransactionCursor = null;
+                updateTransactionCategoryFilter();
+                renderTransactionSummary([]);
+                pagination.hidden = true;
+                tableBody.innerHTML = `
+                    <tr><td colspan="4" class="px-4 py-8 text-center text-rose-400">
+                        Não foi possível carregar as transações.
+                    </td></tr>
+                `;
+                transactionCount.textContent = 'Erro ao carregar';
+            } finally {
+                searchButton.disabled = false;
+                searchButton.textContent = 'Buscar';
+            }
+        }
+
+        async function fetchTransactionPage() {
+            const params = new URLSearchParams({ accountId: transactionAccountId });
+            if (nextTransactionCursor) {
+                params.set('after', nextTransactionCursor);
+            }
+            const response = await fetch(
+                `/routers/pluggy/get_transaction_history?${params.toString()}`
+            );
+            if (!response.ok) {
+                throw new Error(`Falha ao carregar transações (HTTP ${response.status}).`);
+            }
+            return response.json();
+        }
+
+        function renderTransactionPage() {
+            const tableBody = document.getElementById('transactions-table-body');
+            const transactionCount = document.getElementById('transaction-count');
+            const pagination = document.getElementById('transaction-pagination');
+            const previousButton = document.getElementById('previous-transactions-page');
+            const nextButton = document.getElementById('next-transactions-page');
+            const pageLabel = document.getElementById('transaction-page-label');
+            const filteredTransactions = getFilteredTransactions();
+            const pageCount = Math.ceil(filteredTransactions.length / transactionsPerPage);
+            renderTransactionSummary(filteredTransactions);
+
+            if (filteredTransactions.length === 0) {
+                tableBody.innerHTML = `
+                    <tr><td colspan="4" class="px-4 py-8 text-center text-slate-500">
+                        ${transactionHistory.length === 0
+                            ? 'Nenhuma transação encontrada para esta conta.'
+                            : 'Nenhuma transação carregada corresponde aos filtros.'}
+                    </td></tr>
+                `;
+                transactionCount.textContent = `0 de ${transactionHistory.length} carregadas`;
+                previousButton.disabled = true;
+                nextButton.disabled = !nextTransactionCursor || isLoadingTransactionPage;
+                pageLabel.textContent = nextTransactionCursor
+                    ? 'Carregue mais transações para buscar correspondências'
+                    : 'Nenhuma correspondência';
+                pagination.hidden = !nextTransactionCursor && transactionHistory.length === 0;
+                nextButton.textContent = isLoadingTransactionPage
+                    ? 'Carregando...'
+                    : 'Carregar mais';
+                document.getElementById('export-transactions-button').disabled = true;
+                return;
+            }
+
+            const startIndex = (currentTransactionPage - 1) * transactionsPerPage;
+            const pageTransactions = filteredTransactions.slice(
+                startIndex,
+                startIndex + transactionsPerPage
+            );
+            tableBody.innerHTML = '';
+            pageTransactions.forEach(transaction => {
+                    const row = document.createElement('tr');
+                    const date = transaction.date ? new Date(transaction.date) : null;
+                    const formattedDate = date && !Number.isNaN(date.getTime())
+                        ? new Intl.DateTimeFormat('pt-BR').format(date)
+                        : '—';
+                    const amount = Number(transaction.amount);
+                    const cells = [
+                        formattedDate,
+                        transaction.description || 'Transação sem descrição',
+                        transaction.category || 'Sem categoria',
+                        Number.isFinite(amount)
+                            ? new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: transaction.amountCurrencyCode || 'BRL'
+                            }).format(amount)
+                            : '—'
+                    ];
+                    cells.forEach((value, index) => {
+                        const cell = document.createElement('td');
+                        cell.className = `px-4 py-3 ${index === 3 ? 'text-right' : ''}`;
+                        cell.textContent = value;
+                        row.appendChild(cell);
+                    });
+                    tableBody.appendChild(row);
+            });
+
+            const displayedEnd = startIndex + pageTransactions.length;
+            transactionCount.textContent =
+                `Exibindo ${startIndex + 1}–${displayedEnd} de ${filteredTransactions.length} encontradas (${transactionHistory.length} carregadas${nextTransactionCursor ? '+' : ''})`;
+            pageLabel.textContent = `Página ${currentTransactionPage} de ${pageCount}`;
+            if (transactionLoadError) {
+                pageLabel.textContent = transactionLoadError;
+            }
+            previousButton.disabled = currentTransactionPage === 1;
+            nextButton.disabled = isLoadingTransactionPage ||
+                (currentTransactionPage === pageCount && !nextTransactionCursor);
+            nextButton.textContent = isLoadingTransactionPage
+                ? 'Carregando...'
+                : currentTransactionPage === pageCount && nextTransactionCursor
+                    ? 'Carregar mais'
+                    : 'Próxima';
+            pagination.hidden = pageCount <= 1 && !nextTransactionCursor;
+            document.getElementById('export-transactions-button').disabled = false;
+        }
+
+        function renderTransactionSummary(transactions) {
+            const summarySection = document.getElementById('transaction-summary-section');
+            const summaryContent = document.getElementById('transaction-summary-content');
+            const summaryCount = document.getElementById('transaction-summary-count');
+            summaryContent.innerHTML = '';
+            summarySection.hidden = transactions.length === 0;
+            if (transactions.length === 0) {
+                summaryCount.textContent = '';
+                return;
+            }
+
+            summaryCount.textContent =
+                `${transactions.length} transações incluídas` +
+                (nextTransactionCursor ? ' · há mais transações para carregar' : '');
+
+            const currencies = new Map();
+            transactions.forEach(transaction => {
+                const amount = Number(transaction.amount);
+                if (!Number.isFinite(amount)) {
+                    return;
+                }
+
+                const requestedCurrency = String(transaction.amountCurrencyCode || 'BRL').toUpperCase();
+                const currency = /^[A-Z]{3}$/.test(requestedCurrency) ? requestedCurrency : 'BRL';
+                if (!currencies.has(currency)) {
+                    currencies.set(currency, { expenses: 0, income: 0, categories: new Map() });
+                }
+                const totals = currencies.get(currency);
+                const type = String(transaction.type || '').toUpperCase();
+                const isIncome = type === 'CREDIT' || (type !== 'DEBIT' && amount < 0);
+                const value = Math.abs(amount);
+                const category = String(transaction.category || '').trim() || 'Sem categoria';
+
+                if (isIncome) {
+                    totals.income += value;
+                } else {
+                    totals.expenses += value;
+                }
+                if (!totals.categories.has(category)) {
+                    totals.categories.set(category, { expenses: 0, income: 0 });
+                }
+                const categoryTotals = totals.categories.get(category);
+                categoryTotals[isIncome ? 'income' : 'expenses'] += value;
+            });
+
+            currencies.forEach((totals, currency) => {
+                const currencySection = document.createElement('article');
+                currencySection.className = 'space-y-4';
+
+                const currencyTitle = document.createElement('h3');
+                currencyTitle.className = 'text-sm font-semibold uppercase tracking-wide text-slate-300';
+                currencyTitle.textContent = currency;
+                currencySection.appendChild(currencyTitle);
+
+                const formatMoney = amount => new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency
+                }).format(amount);
+                const metricGrid = document.createElement('div');
+                metricGrid.className = 'grid grid-cols-1 gap-3 sm:grid-cols-3';
+                [
+                    { label: 'Despesas', value: totals.expenses, color: 'text-rose-300' },
+                    { label: 'Entradas', value: totals.income, color: 'text-emerald-300' },
+                    {
+                        label: 'Saldo líquido',
+                        value: totals.income - totals.expenses,
+                        color: totals.income >= totals.expenses ? 'text-emerald-300' : 'text-rose-300'
+                    }
+                ].forEach(metric => {
+                    const card = document.createElement('div');
+                    card.className = 'rounded-xl border border-slate-700/50 bg-slate-900/50 p-4';
+                    const label = document.createElement('div');
+                    label.className = 'text-xs uppercase tracking-wide text-slate-500';
+                    label.textContent = metric.label;
+                    const value = document.createElement('div');
+                    value.className = `mt-2 text-xl font-semibold ${metric.color}`;
+                    value.textContent = formatMoney(metric.value);
+                    card.append(label, value);
+                    metricGrid.appendChild(card);
+                });
+                currencySection.appendChild(metricGrid);
+
+                const tableContainer = document.createElement('div');
+                tableContainer.className = 'overflow-x-auto rounded-xl border border-slate-700/50';
+                const table = document.createElement('table');
+                table.className = 'w-full min-w-[640px] text-left text-sm text-slate-300';
+                table.innerHTML = `
+                    <thead class="bg-slate-900/70 text-xs uppercase text-slate-400">
+                        <tr>
+                            <th class="px-4 py-3">Categoria</th>
+                            <th class="px-4 py-3 text-right">Despesas</th>
+                            <th class="px-4 py-3 text-right">Entradas</th>
+                            <th class="px-4 py-3 text-right">Saldo líquido</th>
+                            <th class="px-4 py-3">Participação</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700/30"></tbody>
+                `;
+                const tableBody = table.querySelector('tbody');
+                [...totals.categories.entries()]
+                    .sort((left, right) => right[1].expenses - left[1].expenses)
+                    .forEach(([category, categoryTotals]) => {
+                        const row = document.createElement('tr');
+                        const net = categoryTotals.income - categoryTotals.expenses;
+                        const share = totals.expenses > 0
+                            ? categoryTotals.expenses / totals.expenses * 100
+                            : 0;
+                        [
+                            category,
+                            formatMoney(categoryTotals.expenses),
+                            formatMoney(categoryTotals.income),
+                            formatMoney(net)
+                        ].forEach((text, index) => {
+                            const cell = document.createElement('td');
+                            cell.className = `px-4 py-3 ${index > 0 ? 'text-right tabular-nums' : 'font-medium text-slate-200'}`;
+                            cell.textContent = text;
+                            row.appendChild(cell);
+                        });
+                        const shareCell = document.createElement('td');
+                        shareCell.className = 'px-4 py-3';
+                        const shareLabel = document.createElement('div');
+                        shareLabel.className = 'mb-1 text-xs text-slate-400';
+                        shareLabel.textContent = `${share.toLocaleString('pt-BR', {
+                            maximumFractionDigits: 1
+                        })}%`;
+                        const bar = document.createElement('div');
+                        bar.className = 'h-1.5 overflow-hidden rounded-full bg-slate-700';
+                        const fill = document.createElement('div');
+                        fill.className = 'h-full rounded-full bg-indigo-400';
+                        fill.style.width = `${Math.min(share, 100)}%`;
+                        bar.appendChild(fill);
+                        shareCell.append(shareLabel, bar);
+                        row.appendChild(shareCell);
+                        tableBody.appendChild(row);
+                    });
+                tableContainer.appendChild(table);
+                currencySection.appendChild(tableContainer);
+                summaryContent.appendChild(currencySection);
+            });
+            summarySection.hidden = currencies.size === 0;
+        }
+
+        function getFilteredTransactions() {
+            const searchTerm = document.getElementById('transaction-search').value
+                .trim()
+                .toLocaleLowerCase('pt-BR');
+            const transactionType = document.getElementById('transaction-type-filter').value;
+            const transactionCategory = document.getElementById('transaction-category-filter').value;
+            const dateFrom = document.getElementById('transaction-date-from').value;
+            const dateTo = document.getElementById('transaction-date-to').value;
+
+            return transactionHistory.filter(transaction => {
+                const searchableText =
+                    `${transaction.description} ${transaction.category}`.toLocaleLowerCase('pt-BR');
+                const transactionDate = (transaction.date || '').slice(0, 10);
+                return (!searchTerm || searchableText.includes(searchTerm)) &&
+                    (!transactionType || transaction.type === transactionType) &&
+                    (!transactionCategory ||
+                        (transaction.category || 'Sem categoria') === transactionCategory) &&
+                    (!dateFrom || transactionDate >= dateFrom) &&
+                    (!dateTo || transactionDate <= dateTo);
+            });
+        }
+
+        function updateTransactionCategoryFilter() {
+            const categoryFilter = document.getElementById('transaction-category-filter');
+            const selectedCategory = categoryFilter.value;
+            const categories = [...new Set(transactionHistory.map(transaction =>
+                String(transaction.category || '').trim() || 'Sem categoria'
+            ))].sort((left, right) => left.localeCompare(right, 'pt-BR'));
+
+            categoryFilter.replaceChildren(new Option('Todas as categorias', ''));
+            categories.forEach(category => {
+                categoryFilter.add(new Option(category, category));
+            });
+            categoryFilter.value = categories.includes(selectedCategory) ? selectedCategory : '';
+            categoryFilter.disabled = categories.length === 0;
+        }
+
+        document.getElementById('previous-transactions-page').addEventListener('click', () => {
+            if (currentTransactionPage > 1) {
+                currentTransactionPage -= 1;
+                renderTransactionPage();
+            }
+        });
+
+        document.getElementById('next-transactions-page').addEventListener('click', async () => {
+            const pageCount = Math.ceil(getFilteredTransactions().length / transactionsPerPage);
+            if (currentTransactionPage < pageCount) {
+                currentTransactionPage += 1;
+                renderTransactionPage();
+                return;
+            }
+            if (!nextTransactionCursor || isLoadingTransactionPage) {
+                return;
+            }
+
+            isLoadingTransactionPage = true;
+            transactionLoadError = '';
+            const requestedPage = currentTransactionPage + 1;
+            renderTransactionPage();
+            try {
+                const data = await fetchTransactionPage();
+                if (!Array.isArray(data.TransactionHistory)) {
+                    throw new Error('A resposta de transações possui formato inválido.');
+                }
+                transactionHistory.push(...data.TransactionHistory);
+                nextTransactionCursor = data.nextCursor || null;
+                updateTransactionCategoryFilter();
+                currentTransactionPage = Math.min(
+                    requestedPage,
+                    Math.max(1, Math.ceil(getFilteredTransactions().length / transactionsPerPage))
+                );
+            } catch (error) {
+                console.error('Erro ao carregar mais transações:', error);
+                transactionLoadError = 'Não foi possível carregar mais transações.';
+            } finally {
+                isLoadingTransactionPage = false;
+                renderTransactionPage();
+            }
+        });
+
+        [
+            'transaction-search',
+            'transaction-type-filter',
+            'transaction-category-filter',
+            'transaction-date-from',
+            'transaction-date-to'
+        ].forEach(id => {
+            const filterElement = document.getElementById(id);
+            const renderFilteredPage = () => {
+                currentTransactionPage = 1;
+                renderTransactionPage();
+            };
+            filterElement.addEventListener('input', renderFilteredPage);
+            filterElement.addEventListener('change', renderFilteredPage);
+        });
+
+        document.getElementById('export-transactions-button').addEventListener('click', () => {
+            const selectedAccount = connectedAccounts.find(
+                account => account.id === transactionAccountId
+            );
+            const headers = ['Banco', 'Conta', 'Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Moeda'];
+            const rows = getFilteredTransactions().map(transaction => [
+                selectedAccount?.institution || '',
+                selectedAccount?.name || '',
+                transaction.date || '',
+                transaction.description || '',
+                transaction.category || '',
+                transaction.type || '',
+                transaction.amount ?? '',
+                transaction.amountCurrencyCode || 'BRL'
+            ]);
+            const csv = [headers, ...rows]
+                .map(row => row.map((value, index) => {
+                    const text = String(value).replaceAll('"', '""');
+                    const safeText = index !== 6 && /^[\s=+\-@]/.test(text)
+                        ? `'${text}`
+                        : text;
+                    return `"${safeText}"`;
+                }).join(';'))
+                .join('\r\n');
+            const downloadUrl = URL.createObjectURL(
+                new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' })
+            );
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = `transacoes-${transactionAccountId}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+        });
     </script>
 </body>
 </html>

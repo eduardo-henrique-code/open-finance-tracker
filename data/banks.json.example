@@ -1,60 +1,20 @@
 {
-    "banco1": {
-        "BANK": {
-            "id": "",
-            "type": "",
-            "subtype": "",
-            "name": "",
-            "balance": ,
-            "currencyCode": "",
-            "itemId": "",
-            "number": "",
-            "createdAt": "",
-            "updatedAt": "",
-            "marketingName": "",
-            "taxNumber": "",
-            "owner": "",
-            "bankData": {
-                "transferNumber": "",
-                "closingBalance": ,
-                "automaticallyInvestedBalance": ,
-                "overdraftContractedLimit": ,
-                "overdraftUsedLimit": ,
-                "unarrangedOverdraftAmount": ,
-                "hasReservedBalance": ,
-                "reservedBalances": []
-            },
-            "creditData": 
-        },
-        "CREDIT": {
-            "id": "",
-            "type": "",
-            "subtype": "",
-            "name": "",
-            "balance": ,
-            "currencyCode": "",
-            "itemId": "",
-            "number": "",
-            "createdAt": "",
-            "updatedAt": "",
-            "marketingName": ,
-            "taxNumber": ,
-            "owner": "",
-            "bankData": ,
-            "creditData": {
-                "level": "",
-                "brand": "",
-                "brandAdditionalInfo": "",
-                "balanceCloseDate": ,
-                "balanceDueDate": "",
-                "availableCreditLimit": ,
-                "balanceForeignCurrency": ,
-                "minimumPayment": ,
-                "creditLimit": ,
-                "isLimitFlexible": ,
-                "holderType": ,
-                "status": ""
-            }
-        }
-    } 
+  "instituicao": {
+    "BANK": {
+      "id": "pluggy-account-id",
+      "itemId": "pluggy-item-id",
+      "type": "BANK",
+      "name": "Conta corrente",
+      "balance": 0,
+      "currencyCode": "BRL"
+    },
+    "CREDIT": {
+      "id": "pluggy-credit-account-id",
+      "itemId": "pluggy-item-id",
+      "type": "CREDIT",
+      "name": "Cartão de crédito",
+      "balance": 0,
+      "currencyCode": "BRL"
+    }
+  }
 }
